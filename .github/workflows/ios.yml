@@ -1,0 +1,37 @@
+name: iPadOS Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Audit source delivery
+        run: python3 tools/audit_project.py
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Select available iPad simulator
+        id: simulator
+        run: |
+          DEVICE_ID="$(xcrun simctl list devices available -j | python3 -c 'import json, sys; devices=json.load(sys.stdin)["devices"]; print(next(device["udid"] for runtime in devices.values() for device in runtime if device["isAvailable"] and "iPad" in device["name"]))')"
+          echo "device_id=${DEVICE_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        run: |
+          xcodebuild \
+            -project ScholarPad.xcodeproj \
+            -scheme ScholarPad \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.device_id }}" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            test

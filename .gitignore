@@ -1,0 +1,6 @@
+.DS_Store
+DerivedData/
+*.xcuserstate
+xcuserdata/
+tools/__pycache__/
+ScholarPad.xcodeproj/

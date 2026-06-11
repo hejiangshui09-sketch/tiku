@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "updated_at": "2026-06-11T12:00:00Z",
+  "courses": [
+    {
+      "id": "learning-science-foundations",
+      "title": "高效学习方法",
+      "subtitle": "从理解、练习到长期掌握的系统课程",
+      "subject": "学习科学",
+      "accent": "indigo",
+      "course_url": "https://example.com/courses/learning-science/chapters.json",
+      "chapter_count": 3,
+      "question_count": 12,
+      "updated_at": "2026-06-11T12:00:00Z"
+    }
+  ]
+}
