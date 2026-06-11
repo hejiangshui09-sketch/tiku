@@ -23,7 +23,16 @@ jobs:
 
       - name: Generate Xcode project
         run: xcodegen generate
+# ✅ 新增这一步
+      - name: Install iOS Simulator Runtime
+        run: |
+          xcodebuild -downloadPlatform iOS
 
+      - name: Select available iPad simulator
+        id: simulator
+        run: |
+          DEVICE_ID="$(xcrun simctl list devices available -j | python3 -c 'import json, sys; devices=json.load(sys.stdin)["devices"]; print(next(device["udid"] for runtime in devices.values() for device in runtime if device["isAvailable"] and "iPad" in device["name"]))')"
+          echo "device_id=${DEVICE_ID}" >> "$GITHUB_OUTPUT"
       - name: Select available iPad simulator
         id: simulator
         run: |
