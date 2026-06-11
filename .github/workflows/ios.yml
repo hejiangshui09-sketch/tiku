@@ -3,13 +3,17 @@ name: iPadOS Build
 on:
   push:
   pull_request:
-
 jobs:
   build-and-test:
-    runs-on: macos-14
+    runs-on: macos-15        # ✅ 改这里！macos-15 自带 Xcode 16
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Select Xcode version   # ✅ 加这一步，明确指定版本
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.2'
 
       - name: Install XcodeGen
         run: brew install xcodegen
