@@ -22,7 +22,7 @@ struct ScholarPadApp: App {
                     .keyboardShortcut("3", modifiers: .command)
                 Divider()
                 Button("全局搜索") { model.selectedSection = .search }
-                    .keyboardShortcut("f", modifiers: .command)
+                    .keyboardShortcut("f", modifiers: [.command, .shift])
             }
         }
     }

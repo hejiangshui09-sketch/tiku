@@ -4,9 +4,7 @@ import XCTest
 final class ContentDecoderTests: XCTestCase {
     func testBundledChaptersJSONDecodes() throws {
         let url = try XCTUnwrap(
-            Bundle.allBundles
-                .compactMap { $0.url(forResource: "chapters", withExtension: "json") }
-                .first
+            Bundle.main.url(forResource: "chapters", withExtension: "json")
         )
         let data = try Data(contentsOf: url)
         let payload = try JSONDecoder().decode(CoursePayload.self, from: data)
