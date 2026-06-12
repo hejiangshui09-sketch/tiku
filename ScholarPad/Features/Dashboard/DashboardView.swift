@@ -133,7 +133,7 @@ struct DashboardView: View {
 
     private var accuracyText: String {
         guard model.attemptedQuestions > 0 else { return "尚未答题" }
-        return Double(model.correctQuestions) / Double(model.attemptedQuestions)
+        return (Double(model.correctQuestions) / Double(model.attemptedQuestions))
             .formatted(.percent.precision(.fractionLength(0)))
     }
 }

@@ -336,7 +336,7 @@ final class AppModel: ObservableObject {
 
     func completion(for course: Course, chapter: Chapter) -> Double {
         guard !chapter.knowledgePoints.isEmpty else { return 0 }
-        let value = progress(for: course, chapter).completedModuleIndexes.count
+        let value = progress(for: course, chapter: chapter).completedModuleIndexes.count
         return min(Double(value) / Double(chapter.knowledgePoints.count), 1)
     }
 
