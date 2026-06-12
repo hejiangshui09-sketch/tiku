@@ -29,15 +29,15 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build and test
+      - name: Build app and tests
         run: |
           xcodebuild \
             -project ScholarPad.xcodeproj \
             -scheme ScholarPad \
-            -destination "platform=iOS Simulator,name=iPad (10th generation),OS=latest" \
+            -destination "generic/platform=iOS Simulator" \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
-            test
+            build-for-testing
 
       - name: Build unsigned device app
         run: |

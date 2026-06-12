@@ -45,6 +45,8 @@ targets:
     platform: iOS
     sources:
       - path: ScholarPadTests
+    resources:
+      - path: ScholarPad/Resources/chapters.json
     dependencies:
       - target: ScholarPad
     settings:

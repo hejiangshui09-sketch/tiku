@@ -35,7 +35,7 @@ open ScholarPad.xcodeproj
 
 也可以在 Xcode 中创建一个新的 iPad App，再将 `ScholarPad/` 下的源码和 `Resources/chapters.json` 拖入工程。
 
-项目附带 `.github/workflows/ios.yml`。将 `ScholarPad` 目录作为仓库根目录推送到 GitHub 后，会在 macOS runner 上自动生成 Xcode 工程，并选择可用 iPad 模拟器执行构建与单元测试。
+项目附带 `.github/workflows/ios.yml`。将 `ScholarPad` 目录作为仓库根目录推送到 GitHub 后，会在 macOS runner 上自动生成 Xcode 工程，并编译应用与单元测试目标。
 
 测试通过后，工作流还会构建设备版应用并上传 `ScholarPad-unsigned-<commit SHA>` Artifact，其中包含 `ScholarPad-unsigned.ipa`。该 IPA 未签名，不能直接安装到普通 iPad；使用前需要通过你自己的证书或侧载工具签名。
 
