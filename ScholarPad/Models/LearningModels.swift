@@ -16,8 +16,8 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
     var title: String {
         switch self {
         case .home: "学习首页"
-        case .courses: "我的课程"
-        case .online: "在线课程库"
+        case .courses: "我的书柜"
+        case .online: "在线资源库"
         case .practice: "题目练习"
         case .search: "全局搜索"
         case .saved: "我的收藏"
@@ -53,6 +53,31 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .progress: "chart.xyaxis.line"
         case .settings: "gearshape.fill"
         }
+    }
+}
+
+struct LibraryShelf: Codable, Identifiable, Hashable, Sendable {
+    let id: String
+    var name: String
+    var createdAt: Date
+}
+
+struct CloudResource: Codable, Identifiable, Hashable, Sendable {
+    let id: String
+    var title: String
+    var url: URL
+    var kind: LearningResourceKind
+    var detail: String?
+    var createdAt: Date
+
+    var learningResource: LearningResource {
+        LearningResource(
+            id: "cloud-\(id)",
+            title: title,
+            kind: kind,
+            url: url,
+            detail: detail
+        )
     }
 }
 
@@ -101,6 +126,9 @@ struct LearningBackup: Codable, Sendable {
     let savedItems: Set<String>
     let reviewItems: [String: ReviewItem]
     let notes: [String: StudyNote]
+    let libraryShelves: [LibraryShelf]?
+    let courseShelfAssignments: [String: String]?
+    let cloudResources: [CloudResource]?
 }
 
 struct QuestionContext: Identifiable, Hashable, Sendable {

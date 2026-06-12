@@ -94,10 +94,10 @@ struct CoursePayload: Codable, Hashable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        courseID = try container.decodeIfPresent(String.self, forKey: .courseID)
-        courseTitle = try container.decodeIfPresent(String.self, forKey: .courseTitle)
-        courseSubtitle = try container.decodeIfPresent(String.self, forKey: .courseSubtitle)
-        courseSubject = try container.decodeIfPresent(String.self, forKey: .courseSubject)
+        courseID = try container.decodeIfPresent(String.self, forKey: .courseID).map(ContentText.normalized)
+        courseTitle = try container.decodeIfPresent(String.self, forKey: .courseTitle).map(ContentText.normalized)
+        courseSubtitle = try container.decodeIfPresent(String.self, forKey: .courseSubtitle).map(ContentText.normalized)
+        courseSubject = try container.decodeIfPresent(String.self, forKey: .courseSubject).map(ContentText.normalized)
         courseAccent = try? container.decode(CourseAccent.self, forKey: .courseAccent)
         chapters = try container.decodeIfPresent([Chapter].self, forKey: .chapters) ?? []
         totalChapters = chapters.count
@@ -126,7 +126,8 @@ struct Chapter: Codable, Identifiable, Hashable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         chapterID = try container.decode(Int.self, forKey: .chapterID)
-        chapterTitle = try container.decodeIfPresent(String.self, forKey: .chapterTitle) ?? "未命名章节"
+        chapterTitle = try container.decodeIfPresent(String.self, forKey: .chapterTitle)
+            .map(ContentText.normalized) ?? "未命名章节"
         knowledgePoints = try container.decodeIfPresent([KnowledgePoint].self, forKey: .knowledgePoints) ?? []
         questions = try container.decodeIfPresent(QuestionBank.self, forKey: .questions) ?? QuestionBank()
         stats = ChapterStats(knowledgePoints: knowledgePoints, questions: questions)
@@ -148,9 +149,12 @@ struct KnowledgePoint: Codable, Hashable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        title = try container.decodeIfPresent(String.self, forKey: .title) ?? "未命名知识点"
-        description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
-        subPoints = try container.decodeIfPresent([String].self, forKey: .subPoints) ?? []
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+            .map(ContentText.normalized) ?? "未命名知识点"
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+            .map(ContentText.normalized) ?? ""
+        subPoints = try container.decodeIfPresent([String].self, forKey: .subPoints)?
+            .map(ContentText.normalized) ?? []
         resources = try container.decodeIfPresent([LearningResource].self, forKey: .resources)
     }
 }
@@ -161,6 +165,31 @@ struct LearningResource: Codable, Identifiable, Hashable, Sendable {
     let kind: LearningResourceKind
     let url: URL
     let detail: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case kind
+        case url
+        case detail
+    }
+
+    init(id: String, title: String, kind: LearningResourceKind, url: URL, detail: String?) {
+        self.id = id
+        self.title = title
+        self.kind = kind
+        self.url = url
+        self.detail = detail
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = ContentText.normalized(try container.decode(String.self, forKey: .id))
+        title = ContentText.normalized(try container.decode(String.self, forKey: .title))
+        kind = try container.decode(LearningResourceKind.self, forKey: .kind)
+        url = try container.decode(URL.self, forKey: .url)
+        detail = try container.decodeIfPresent(String.self, forKey: .detail).map(ContentText.normalized)
+    }
 }
 
 enum LearningResourceKind: String, Codable, Hashable, Sendable {
@@ -235,10 +264,10 @@ struct RemoteCourseDescriptor: Codable, Identifiable, Hashable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
-        title = try container.decodeIfPresent(String.self, forKey: .title) ?? id
-        subtitle = try container.decodeIfPresent(String.self, forKey: .subtitle) ?? ""
-        subject = try container.decodeIfPresent(String.self, forKey: .subject) ?? "在线课程"
+        id = ContentText.normalized(try container.decode(String.self, forKey: .id))
+        title = try container.decodeIfPresent(String.self, forKey: .title).map(ContentText.normalized) ?? id
+        subtitle = try container.decodeIfPresent(String.self, forKey: .subtitle).map(ContentText.normalized) ?? ""
+        subject = try container.decodeIfPresent(String.self, forKey: .subject).map(ContentText.normalized) ?? "在线课程"
         accent = (try? container.decode(CourseAccent.self, forKey: .accent)) ?? .indigo
         courseURL = try container.decode(URL.self, forKey: .courseURL)
         chapterCount = try container.decodeIfPresent(Int.self, forKey: .chapterCount)
@@ -308,11 +337,13 @@ struct Question: Codable, Identifiable, Hashable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(Int.self, forKey: .id)
         type = try container.decode(QuestionType.self, forKey: .type)
-        question = try container.decodeIfPresent(String.self, forKey: .question) ?? ""
-        answer = try container.decodeIfPresent(String.self, forKey: .answer) ?? ""
-        explanation = try container.decodeIfPresent(String.self, forKey: .explanation) ?? ""
-        options = try container.decodeIfPresent([String: String].self, forKey: .options)
-        answerPoints = try container.decodeIfPresent([String].self, forKey: .answerPoints)
+        question = try container.decodeIfPresent(String.self, forKey: .question).map(ContentText.normalized) ?? ""
+        answer = try container.decodeIfPresent(String.self, forKey: .answer).map(ContentText.normalized) ?? ""
+        explanation = try container.decodeIfPresent(String.self, forKey: .explanation).map(ContentText.normalized) ?? ""
+        options = try container.decodeIfPresent([String: String].self, forKey: .options)?
+            .mapValues(ContentText.normalized)
+        answerPoints = try container.decodeIfPresent([String].self, forKey: .answerPoints)?
+            .map(ContentText.normalized)
     }
 }
 

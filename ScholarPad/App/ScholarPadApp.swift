@@ -16,14 +16,14 @@ struct ScholarPadApp: App {
         }
         .commands {
             CommandMenu("学习") {
-                Button("学习首页") { model.selectedSection = .home }
+                Button("学习首页") { model.activateSection(.home) }
                     .keyboardShortcut("1", modifiers: .command)
-                Button("我的课程") { model.selectedSection = .courses }
+                Button("我的书柜") { model.activateSection(.courses) }
                     .keyboardShortcut("2", modifiers: .command)
-                Button("题目练习") { model.selectedSection = .practice }
+                Button("题目练习") { model.activateSection(.practice) }
                     .keyboardShortcut("3", modifiers: .command)
                 Divider()
-                Button("全局搜索") { model.selectedSection = .search }
+                Button("全局搜索") { model.activateSection(.search) }
                     .keyboardShortcut("f", modifiers: [.command, .shift])
             }
         }

@@ -34,6 +34,54 @@ final class ContentDecoderTests: XCTestCase {
         XCTAssertEqual(question.options?["A"], "甲")
     }
 
+    func testImportedTextRemovesInvisibleAndControlCharacters() throws {
+        let data = Data("""
+        {
+          "id": 1,
+          "type": "single_choice",
+          "question": "题\u{200B}干\\u0000",
+          "answer": "A",
+          "options": {"A": "正\u{2060}确"}
+        }
+        """.utf8)
+
+        let question = try JSONDecoder().decode(Question.self, from: data)
+
+        XCTAssertEqual(question.question, "题干")
+        XCTAssertEqual(question.options?["A"], "正确")
+    }
+
+    func testRichContentFormatterHidesImportedMarkup() {
+        let content = """
+        <table><tr><td>数值</td><td>$ \\frac{1}{2} \\times 4 $</td></tr></table>
+        """
+        let preview = RichContentFormatter.previewText(content)
+
+        XCTAssertFalse(preview.contains("<table"))
+        XCTAssertFalse(preview.contains("\\frac"))
+        XCTAssertTrue(preview.contains("÷"))
+        XCTAssertTrue(preview.contains("×"))
+        XCTAssertTrue(RichContentFormatter.previewText("$ B_{12} + x^2 $").contains("B₁₂ + x²"))
+    }
+
+    func testShelfAndCloudResourcePersistenceModelsDecode() throws {
+        let shelf = LibraryShelf(id: "shelf-1", name: "行测书柜", createdAt: Date(timeIntervalSince1970: 1))
+        let resource = CloudResource(
+            id: "resource-1",
+            title: "课程视频",
+            url: try XCTUnwrap(URL(string: "https://example.com/video.mp4")),
+            kind: .video,
+            detail: "第一讲",
+            createdAt: Date(timeIntervalSince1970: 2)
+        )
+
+        let shelves = try JSONDecoder().decode([LibraryShelf].self, from: JSONEncoder().encode([shelf]))
+        let resources = try JSONDecoder().decode([CloudResource].self, from: JSONEncoder().encode([resource]))
+
+        XCTAssertEqual(shelves.first?.name, "行测书柜")
+        XCTAssertEqual(resources.first?.learningResource.kind, .video)
+    }
+
     func testQuestionEvaluatorSupportsChoiceKeysBeyondD() throws {
         let data = Data("""
         {
@@ -268,7 +316,10 @@ final class ContentDecoderTests: XCTestCase {
             studyEvents: [],
             savedItems: ["course::1::single_choice::1"],
             reviewItems: [:],
-            notes: [:]
+            notes: [:],
+            libraryShelves: nil,
+            courseShelfAssignments: nil,
+            cloudResources: nil
         )
 
         let data = try await LearningBackupService().encode(backup)

@@ -68,9 +68,10 @@ private struct SearchResultRow: View {
                 Text(result.title)
                     .font(.headline)
                     .lineLimit(2)
-                Text(result.detail)
+                Text(RichContentFormatter.previewText(result.detail))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(3)
             }
         }
         .padding(.vertical, 4)

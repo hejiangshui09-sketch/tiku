@@ -27,7 +27,12 @@ struct ResourceViewerView: View {
         .navigationTitle(resource.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if !contentURL.isFileURL {
+                    Link(destination: contentURL) {
+                        Label("用网盘或浏览器打开", systemImage: "safari")
+                    }
+                }
                 ShareLink(item: contentURL) {
                     Label("分享", systemImage: "square.and.arrow.up")
                 }

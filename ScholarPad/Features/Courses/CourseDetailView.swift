@@ -12,8 +12,8 @@ struct CourseDetailView: View {
                 courseHeader
 
                 SectionHeading(
-                    title: "课程章节",
-                    subtitle: "\(course.payload.totalChapters) 个章节 · \(course.totalKnowledgeModules) 个知识模块 · \(course.totalQuestions) 道练习"
+                    title: "章节抽屉",
+                    subtitle: "\(course.payload.totalChapters) 个抽屉 · 每个抽屉分别收纳单元知识与题库"
                 )
                 chapterList
             }
@@ -109,25 +109,20 @@ struct CourseDetailView: View {
     private var chapterList: some View {
         LazyVStack(spacing: 14) {
             ForEach(Array(course.payload.chapters.enumerated()), id: \.element.id) { index, chapter in
-                NavigationLink {
-                    LessonReaderView(course: course, chapter: chapter)
-                } label: {
-                    ChapterRow(
-                        course: course,
-                        chapter: chapter,
-                        index: index,
-                        isResume: chapter.id == resumeChapter?.id && model.courseCompletion(course) > 0
-                    )
-                }
-                .buttonStyle(.scaling)
+                ChapterDrawerRow(
+                    course: course,
+                    chapter: chapter,
+                    index: index,
+                    isResume: chapter.id == resumeChapter?.id && model.courseCompletion(course) > 0
+                )
             }
         }
     }
 }
 
-// MARK: - 章节行
+// MARK: - 章节抽屉
 
-private struct ChapterRow: View {
+private struct ChapterDrawerRow: View {
     @EnvironmentObject private var model: AppModel
     let course: Course
     let chapter: Chapter
@@ -138,61 +133,112 @@ private struct ChapterRow: View {
     private var isDone: Bool { completion >= 1 }
 
     var body: some View {
-        HStack(spacing: 18) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isDone ? Color.green.opacity(0.13) : course.accent.color.opacity(0.12))
-                if isDone {
-                    Image(systemName: "checkmark")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(.green)
-                } else {
-                    Text(String(format: "%02d", index + 1))
-                        .font(.headline.weight(.bold))
-                        .monospacedDigit()
-                        .foregroundStyle(course.accent.color)
-                }
-            }
-            .frame(width: 50, height: 50)
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Text(chapter.chapterTitle)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                    if isResume {
-                        InfoChip(text: "上次学到这里", symbol: "play.fill", color: course.accent.color)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .fill(isDone ? Color.green.opacity(0.14) : course.accent.color.opacity(0.13))
+                    if isDone {
+                        Image(systemName: "checkmark")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(.green)
+                    } else {
+                        Text(String(format: "%02d", index + 1))
+                            .font(.headline.weight(.bold))
+                            .monospacedDigit()
+                            .foregroundStyle(course.accent.color)
                     }
                 }
-                HStack(spacing: 12) {
-                    Label("\(chapter.knowledgePoints.count) 个知识点", systemImage: "lightbulb")
-                    if chapter.stats.totalQuestions > 0 {
-                        Label("\(chapter.stats.totalQuestions) 道练习", systemImage: "checkmark.circle")
+                .frame(width: 48, height: 48)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(chapter.chapterTitle)
+                            .font(.headline)
+                            .lineLimit(2)
+                        if isResume {
+                            InfoChip(text: "上次学到这里", symbol: "play.fill", color: course.accent.color)
+                        }
                     }
-                    if chapter.stats.shortAnswer > 0 {
-                        Label("\(chapter.stats.shortAnswer) 道简答", systemImage: "text.alignleft")
-                    }
+                    Text("\(chapter.knowledgePoints.count) 个知识模块 · \(chapter.stats.totalQuestions) 道题")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-                ProgressView(value: completion)
-                    .tint(isDone ? .green : course.accent.color)
-                    .frame(maxWidth: 320)
-            }
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 6) {
+                Spacer()
                 Text(completion, format: .percent.precision(.fractionLength(0)))
                     .font(.subheadline.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(isDone ? .green : course.accent.color)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color(uiColor: .tertiaryLabel))
             }
+            .padding(16)
+
+            Divider().opacity(0.55)
+
+            HStack(spacing: 12) {
+                if !chapter.knowledgePoints.isEmpty {
+                    NavigationLink {
+                        LessonReaderView(course: course, chapter: chapter)
+                    } label: {
+                        drawerHandle(
+                            title: "单元知识",
+                            detail: "\(chapter.knowledgePoints.count) 个模块",
+                            symbol: "lightbulb.fill",
+                            color: course.accent.color
+                        )
+                    }
+                    .buttonStyle(.scaling)
+                }
+
+                if !chapter.questions.all.isEmpty {
+                    NavigationLink {
+                        QuizSessionView(course: course, chapter: chapter, questions: chapter.questions.all)
+                    } label: {
+                        drawerHandle(
+                            title: "题库",
+                            detail: "\(chapter.stats.totalQuestions) 道练习",
+                            symbol: "checkmark.seal.fill",
+                            color: .orange
+                        )
+                    }
+                    .buttonStyle(.scaling)
+                }
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.025))
         }
-        .scholarCard(padding: 16)
+        .background(ScholarTheme.card, in: RoundedRectangle(cornerRadius: ScholarTheme.cornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: ScholarTheme.cornerRadius, style: .continuous)
+                .stroke(.primary.opacity(0.07), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.045), radius: 12, y: 6)
+    }
+
+    private func drawerHandle(title: String, detail: String, symbol: String, color: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.headline)
+                .foregroundStyle(color)
+                .frame(width: 38, height: 38)
+                .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Capsule()
+                .fill(color.opacity(0.45))
+                .frame(width: 34, height: 5)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .background(ScholarTheme.elevated, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
     }
 }

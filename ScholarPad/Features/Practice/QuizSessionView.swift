@@ -191,9 +191,15 @@ struct QuizSessionView: View {
     private func questionCard(_ question: Question) -> some View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(alignment: .top) {
-                Text(question.question)
-                    .font(.title2.weight(.bold))
-                    .lineSpacing(6)
+                RichContentView(
+                    content: question.question,
+                    bodyFont: .title3.weight(.semibold),
+                    headingFont: .title2.weight(.bold),
+                    textColor: .primary,
+                    headingColor: .primary,
+                    accentColor: course.accent.color,
+                    lineSpacing: 6
+                )
                 Spacer(minLength: 18)
                 Button {
                     Haptics.light()
@@ -609,10 +615,8 @@ private struct ChoiceRow: View {
                     .frame(width: 38, height: 38)
                     .foregroundStyle(isSelected ? .white : color)
                     .background(isSelected ? color : color.opacity(0.11), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                Text(text)
-                    .font(.body)
+                RichInlineText(text, font: .body, color: .primary, lineSpacing: 4)
                     .multilineTextAlignment(.leading)
-                    .foregroundStyle(.primary)
                 Spacer()
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isSelected ? color : Color(uiColor: .tertiaryLabel))
@@ -647,10 +651,19 @@ private struct AnswerExplanationCard: View {
                     .font(.headline)
             }
             if !question.answer.isEmpty {
-                LabeledContent("答案") {
-                    Text(question.answer)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("答案")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    RichContentView(
+                        content: question.answer,
+                        bodyFont: .body.weight(.semibold),
+                        headingFont: .headline,
+                        textColor: .primary,
+                        headingColor: .primary,
+                        accentColor: headerColor,
+                        lineSpacing: 4
+                    )
                 }
             }
             if let points = question.answerPoints, !points.isEmpty {
@@ -658,17 +671,26 @@ private struct AnswerExplanationCard: View {
                     Text("作答要点")
                         .font(.subheadline.weight(.semibold))
                     ForEach(points, id: \.self) { point in
-                        Label(point, systemImage: "circle.fill")
-                            .font(.subheadline)
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "circle.fill")
+                                .font(.system(size: 5))
+                                .padding(.top, 7)
+                            RichInlineText(point, font: .subheadline, color: .primary)
+                        }
                     }
                 }
             }
             if !question.explanation.isEmpty {
                 Divider()
-                Text(.init(question.explanation))
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .lineSpacing(5)
+                RichContentView(
+                    content: question.explanation,
+                    bodyFont: .body,
+                    headingFont: .headline,
+                    textColor: .secondary,
+                    headingColor: .primary,
+                    accentColor: headerColor,
+                    lineSpacing: 5
+                )
             }
         }
         .scholarCard()

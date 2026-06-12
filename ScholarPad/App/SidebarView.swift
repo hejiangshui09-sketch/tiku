@@ -40,9 +40,9 @@ struct SidebarView: View {
                     )
                     .shadow(color: prefs.tint.color.opacity(0.3), radius: 8, y: 4)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("学程")
+                    Text("知识学习库")
                         .font(.headline.weight(.bold))
-                    Text("让每次学习都有进展")
+                    Text("把每本书整理成自己的知识")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -72,14 +72,13 @@ struct SidebarView: View {
             }
             .background(.thinMaterial)
         }
-        .navigationTitle("学程")
+        .navigationTitle("知识学习库")
     }
 
     private func sidebarButton(_ section: AppSection) -> some View {
         Button {
-            guard selection != section else { return }
             Haptics.selection()
-            selection = section
+            model.activateSection(section)
         } label: {
             SidebarRow(section: section, isSelected: selection == section, tint: prefs.tint.color)
         }

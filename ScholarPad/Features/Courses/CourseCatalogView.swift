@@ -8,9 +8,16 @@ struct CourseCatalogView: View {
     @State private var coursePendingDeletion: Course?
     @State private var searchText = ""
     @State private var sortOption: CourseSortOption = .recent
+    @State private var selectedShelfID = ""
+    @State private var shelfEditor: ShelfEditorPayload?
+    @State private var shelfPendingDeletion: LibraryShelf?
+
+    private var selectedShelf: LibraryShelf {
+        model.libraryShelves.first { $0.id == selectedShelfID } ?? model.defaultShelf
+    }
 
     private var filteredCourses: [Course] {
-        var result = model.courses
+        var result = model.courses(in: selectedShelf)
         let query = searchText.trimmingCharacters(in: .whitespaces)
         if !query.isEmpty {
             result = result.filter {
@@ -38,11 +45,12 @@ struct CourseCatalogView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     catalogHero
+                    shelfSelector
 
                     HStack(spacing: 14) {
                         SectionHeading(
-                            title: "全部课程",
-                            subtitle: "\(model.courses.count) 门课程已就绪，支持离线学习"
+                            title: selectedShelf.name,
+                            subtitle: "\(model.courses(in: selectedShelf).count) 本书 · \(model.courses.count) 本书已入库"
                         )
                         Menu {
                             Picker("排序", selection: $sortOption) {
@@ -61,14 +69,18 @@ struct CourseCatalogView: View {
                     if model.courses.isEmpty {
                         EmptyState(
                             symbol: "books.vertical",
-                            title: "还没有课程",
-                            detail: "导入解析器生成的课程 JSON 或单章 JSON 开始学习",
-                            actionTitle: "导入课程",
+                            title: "书柜还是空的",
+                            detail: "导入一本书的课程 JSON，按书柜和抽屉整理知识与题库",
+                            actionTitle: "导入书籍",
                             action: { isPickingFiles = true }
                         )
                         .frame(height: 360)
                     } else if filteredCourses.isEmpty {
-                        EmptyState(symbol: "magnifyingglass", title: "没有匹配的课程", detail: "换个关键词试试")
+                        EmptyState(
+                            symbol: searchText.isEmpty ? "books.vertical" : "magnifyingglass",
+                            title: searchText.isEmpty ? "这个书柜还是空的" : "没有匹配的书籍",
+                            detail: searchText.isEmpty ? "导入书籍，或长按其他书柜中的书籍移动到这里" : "换个关键词试试"
+                        )
                             .frame(height: 280)
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 18)], spacing: 18) {
@@ -81,6 +93,7 @@ struct CourseCatalogView: View {
                                 .buttonStyle(.scaling)
                                 .contextMenu {
                                     accentMenu(for: course)
+                                    moveMenu(for: course)
                                     if !course.source.isBundled {
                                         Divider()
                                         Button(role: .destructive) {
@@ -100,13 +113,18 @@ struct CourseCatalogView: View {
                 .frame(maxWidth: .infinity)
             }
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "搜索课程名称或学科")
-            .navigationTitle("我的课程")
+            .navigationTitle("我的书柜")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        shelfEditor = ShelfEditorPayload(shelf: nil)
+                    } label: {
+                        Label("新建书柜", systemImage: "books.vertical.fill")
+                    }
                     Button {
                         isPickingFiles = true
                     } label: {
-                        Label("导入课程", systemImage: "square.and.arrow.down")
+                        Label("导入书籍", systemImage: "square.and.arrow.down")
                     }
                 }
             }
@@ -131,6 +149,11 @@ struct CourseCatalogView: View {
                     importPreviews = nil
                 }
             }
+            .sheet(item: $shelfEditor) { payload in
+                ShelfEditorSheet(shelf: payload.shelf) { shelfID in
+                    selectedShelfID = shelfID
+                }
+            }
             .alert(
                 "删除课程？",
                 isPresented: Binding(
@@ -149,6 +172,96 @@ struct CourseCatalogView: View {
             } message: { _ in
                 Text("该课程的进度、复习计划、收藏和笔记也会被删除。")
             }
+            .confirmationDialog(
+                "删除书柜？",
+                isPresented: Binding(
+                    get: { shelfPendingDeletion != nil },
+                    set: { if !$0 { shelfPendingDeletion = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: shelfPendingDeletion
+            ) { shelf in
+                Button("删除“\(shelf.name)”", role: .destructive) {
+                    model.deleteShelf(shelf)
+                    selectedShelfID = model.defaultShelf.id
+                    shelfPendingDeletion = nil
+                }
+                Button("取消", role: .cancel) { shelfPendingDeletion = nil }
+            } message: { _ in
+                Text("书柜中的课程不会被删除，会移入默认书柜。")
+            }
+            .onAppear {
+                if selectedShelfID.isEmpty {
+                    selectedShelfID = model.defaultShelf.id
+                }
+            }
+        }
+    }
+
+    private var shelfSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 14) {
+                ForEach(model.libraryShelves) { shelf in
+                    Button {
+                        Haptics.selection()
+                        selectedShelfID = shelf.id
+                    } label: {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Image(systemName: selectedShelfID == shelf.id ? "books.vertical.fill" : "books.vertical")
+                                    .font(.title2)
+                                Spacer()
+                                Text("\(model.courses(in: shelf).count)")
+                                    .font(.caption.weight(.bold))
+                                    .monospacedDigit()
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.white.opacity(0.18), in: Capsule())
+                            }
+                            Text(shelf.name)
+                                .font(.headline)
+                                .lineLimit(1)
+                            Text("打开书柜")
+                                .font(.caption)
+                                .opacity(0.75)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(16)
+                        .frame(width: 210, height: 122, alignment: .leading)
+                        .background(
+                            selectedShelfID == shelf.id
+                                ? AnyShapeStyle(LinearGradient(colors: [.indigo, .teal], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                : AnyShapeStyle(LinearGradient(colors: [.brown.opacity(0.85), .orange.opacity(0.72)], startPoint: .topLeading, endPoint: .bottomTrailing)),
+                            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        )
+                        .overlay(alignment: .bottom) {
+                            HStack(spacing: 5) {
+                                ForEach(0..<5, id: \.self) { _ in
+                                    Capsule().fill(.white.opacity(0.22)).frame(height: 4)
+                                }
+                            }
+                            .padding(.horizontal, 18)
+                            .padding(.bottom, 9)
+                        }
+                    }
+                    .buttonStyle(.scaling)
+                    .contextMenu {
+                        Button {
+                            shelfEditor = ShelfEditorPayload(shelf: shelf)
+                        } label: {
+                            Label("重命名", systemImage: "pencil")
+                        }
+                        if shelf.id != model.defaultShelf.id {
+                            Button(role: .destructive) {
+                                shelfPendingDeletion = shelf
+                            } label: {
+                                Label("删除书柜", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 3)
         }
     }
 
@@ -166,25 +279,39 @@ struct CourseCatalogView: View {
         }
     }
 
+    private func moveMenu(for course: Course) -> some View {
+        Menu {
+            ForEach(model.libraryShelves) { shelf in
+                Button {
+                    model.moveCourse(course, to: shelf)
+                } label: {
+                    Label(shelf.name, systemImage: model.shelfID(for: course) == shelf.id ? "checkmark" : "books.vertical")
+                }
+            }
+        } label: {
+            Label("移动到书柜", systemImage: "tray.and.arrow.down")
+        }
+    }
+
     private var catalogHero: some View {
         HStack(spacing: 24) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("课程资料库")
+                Text("书柜资料库")
                     .font(ScholarFont.display(0.95))
-                Text("统一管理章节、知识点和题目。新的解析结果可随时导入，导入前可预览确认。")
+                Text("每个书柜收纳一类书籍，每本书的章节都按抽屉拆分为单元知识与题库。")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Button {
                     isPickingFiles = true
                 } label: {
-                    Label("导入课程 JSON", systemImage: "plus")
+                    Label("导入书籍 JSON", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
                 .padding(.top, 6)
             }
             Spacer()
-            Image(systemName: "rectangle.stack.badge.plus")
+            Image(systemName: "books.vertical.fill")
                 .font(.system(size: 72))
                 .foregroundStyle(.tint)
                 .symbolRenderingMode(.hierarchical)
@@ -220,6 +347,59 @@ enum CourseSortOption: String, CaseIterable, Identifiable {
 private struct ImportPreviewPayload: Identifiable {
     let previews: [CourseImportPreview]
     var id: String { previews.map(\.id).joined() }
+}
+
+private struct ShelfEditorPayload: Identifiable {
+    let shelf: LibraryShelf?
+    var id: String { shelf?.id ?? "new-library-shelf" }
+}
+
+private struct ShelfEditorSheet: View {
+    @EnvironmentObject private var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let shelf: LibraryShelf?
+    let onSaved: (String) -> Void
+    @State private var name: String
+
+    init(shelf: LibraryShelf?, onSaved: @escaping (String) -> Void) {
+        self.shelf = shelf
+        self.onSaved = onSaved
+        _name = State(initialValue: shelf?.name ?? "")
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("例如：公务员行测", text: $name)
+                } header: {
+                    Text("书柜名称")
+                } footer: {
+                    Text("书柜用于收纳同一本书或同一类学习资料，之后可以随时重命名。")
+                }
+            }
+            .navigationTitle(shelf == nil ? "新建书柜" : "重命名书柜")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        if let shelf {
+                            model.renameShelf(shelf, to: name)
+                            onSaved(shelf.id)
+                        } else if let created = model.createShelf(named: name) {
+                            onSaved(created.id)
+                        }
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
 }
 
 // MARK: - 课程卡片

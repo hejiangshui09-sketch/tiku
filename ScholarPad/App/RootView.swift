@@ -34,6 +34,7 @@ struct RootView: View {
                     SettingsView()
                 }
             }
+            .id("\(model.selectedSection.rawValue)-\(model.navigationResetID.uuidString)")
             .background(ScholarTheme.page)
         }
         .navigationSplitViewStyle(.balanced)

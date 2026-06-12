@@ -8,6 +8,7 @@ struct ImportPreviewSheet: View {
 
     @State private var previews: [CourseImportPreview]
     @State private var selectedIDs: Set<String>
+    @State private var destinationShelfID = ""
     let onFinish: () -> Void
 
     init(previews: [CourseImportPreview], onFinish: @escaping () -> Void) {
@@ -29,6 +30,7 @@ struct ImportPreviewSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     summaryHeader
+                    destinationShelfPicker
 
                     ForEach($previews) { $preview in
                         if let course = preview.course {
@@ -62,7 +64,7 @@ struct ImportPreviewSheet: View {
                             return preview.course
                         }
                         Task {
-                            await model.confirmImport(selected)
+                            await model.confirmImport(selected, shelfID: destinationShelfID)
                             dismiss()
                             onFinish()
                         }
@@ -75,6 +77,11 @@ struct ImportPreviewSheet: View {
             }
         }
         .presentationDetents([.large])
+        .onAppear {
+            if destinationShelfID.isEmpty {
+                destinationShelfID = model.defaultShelf.id
+            }
+        }
     }
 
     private func toggle(_ id: String) {
@@ -103,6 +110,29 @@ struct ImportPreviewSheet: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+        }
+        .scholarCard(padding: 16)
+    }
+
+    private var destinationShelfPicker: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "books.vertical.fill")
+                .font(.title2)
+                .foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("存入书柜")
+                    .font(.headline)
+                Text("导入后可随时移动到其他书柜")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Picker("目标书柜", selection: $destinationShelfID) {
+                ForEach(model.libraryShelves) { shelf in
+                    Text(shelf.name).tag(shelf.id)
+                }
+            }
+            .pickerStyle(.menu)
         }
         .scholarCard(padding: 16)
     }

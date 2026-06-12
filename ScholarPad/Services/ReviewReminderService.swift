@@ -13,7 +13,7 @@ final class ReviewReminderService {
         center.removePendingNotificationRequests(withIdentifiers: [identifier])
 
         let content = UNMutableNotificationContent()
-        content.title = "今天的复习任务"
+        content.title = "知识学习库 · 今日复习"
         content.body = "用几分钟完成到期题目，让知识保持清晰。"
         content.sound = .default
 

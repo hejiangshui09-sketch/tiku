@@ -491,10 +491,15 @@ private struct KnowledgeModuleCard: View {
                         .font(.system(size: 22 * fontScale, weight: .bold, design: design))
                         .foregroundStyle(theme.textColor)
                     if !point.description.isEmpty {
-                        Text(.init(point.description))
-                            .font(.system(size: 17 * fontScale, design: design))
-                            .foregroundStyle(theme.secondaryTextColor)
-                            .lineSpacing(lineSpacing)
+                        RichContentView(
+                            content: point.description,
+                            bodyFont: .system(size: 17 * fontScale, design: design),
+                            headingFont: .system(size: 19 * fontScale, weight: .bold, design: design),
+                            textColor: theme.secondaryTextColor,
+                            headingColor: theme.textColor,
+                            accentColor: course.accent.color,
+                            lineSpacing: lineSpacing
+                        )
                     }
                 }
                 Spacer()
@@ -514,10 +519,12 @@ private struct KnowledgeModuleCard: View {
                                 .font(.system(size: 6))
                                 .foregroundStyle(course.accent.color)
                                 .padding(.top, 8)
-                            Text(.init(item))
-                                .font(.system(size: 16 * fontScale, design: design))
-                                .foregroundStyle(theme.textColor)
-                                .lineSpacing(lineSpacing)
+                            RichInlineText(
+                                item,
+                                font: .system(size: 16 * fontScale, design: design),
+                                color: theme.textColor,
+                                lineSpacing: lineSpacing
+                            )
                         }
                     }
                 }

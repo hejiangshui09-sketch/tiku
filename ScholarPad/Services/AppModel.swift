@@ -4,7 +4,11 @@ import Foundation
 @MainActor
 final class AppModel: ObservableObject {
     @Published var selectedSection: AppSection = .home
+    @Published private(set) var navigationResetID = UUID()
     @Published private(set) var courses: [Course] = []
+    @Published private(set) var libraryShelves: [LibraryShelf] = []
+    @Published private(set) var courseShelfAssignments: [String: String] = [:]
+    @Published private(set) var cloudResources: [CloudResource] = []
     @Published private(set) var progress: [String: ChapterProgress] = [:]
     @Published private(set) var studyEvents: [StudyEvent] = []
     @Published private(set) var savedItems: Set<String> = []
@@ -39,6 +43,9 @@ final class AppModel: ObservableObject {
         static let catalogURL = "scholarpad.catalog-url.v1"
         static let reviewReminders = "scholarpad.review-reminders.v1"
         static let offlineResources = "scholarpad.offline-resources.v1"
+        static let libraryShelves = "knowledge-library.shelves.v1"
+        static let courseShelfAssignments = "knowledge-library.course-shelves.v1"
+        static let cloudResources = "knowledge-library.cloud-resources.v1"
     }
 
     init() {
@@ -51,6 +58,10 @@ final class AppModel: ObservableObject {
         notes = Self.decode([String: StudyNote].self, from: defaults.data(forKey: Keys.notes)) ?? [:]
         reviewRemindersEnabled = defaults.bool(forKey: Keys.reviewReminders)
         offlineResourcePaths = Self.decode([String: String].self, from: defaults.data(forKey: Keys.offlineResources)) ?? [:]
+        libraryShelves = Self.decode([LibraryShelf].self, from: defaults.data(forKey: Keys.libraryShelves)) ?? []
+        courseShelfAssignments = Self.decode([String: String].self, from: defaults.data(forKey: Keys.courseShelfAssignments)) ?? [:]
+        cloudResources = Self.decode([CloudResource].self, from: defaults.data(forKey: Keys.cloudResources)) ?? []
+        ensureDefaultShelf()
     }
 
     func bootstrap() async {
@@ -78,6 +89,93 @@ final class AppModel: ObservableObject {
                 notice = error.localizedDescription
             }
         }
+        ensureShelfAssignments()
+    }
+
+    func activateSection(_ section: AppSection) {
+        selectedSection = section
+        navigationResetID = UUID()
+    }
+
+    // MARK: - 书柜
+
+    var defaultShelf: LibraryShelf {
+        ensureDefaultShelf()
+        return libraryShelves[0]
+    }
+
+    func courses(in shelf: LibraryShelf) -> [Course] {
+        courses.filter { shelfID(for: $0) == shelf.id }
+    }
+
+    func shelfID(for course: Course) -> String {
+        courseShelfAssignments[course.id] ?? defaultShelf.id
+    }
+
+    @discardableResult
+    func createShelf(named name: String) -> LibraryShelf? {
+        let cleaned = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return nil }
+        let shelf = LibraryShelf(id: UUID().uuidString, name: cleaned, createdAt: Date())
+        libraryShelves.append(shelf)
+        persist()
+        notice = "已创建书柜“\(cleaned)”"
+        return shelf
+    }
+
+    func renameShelf(_ shelf: LibraryShelf, to name: String) {
+        let cleaned = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty, let index = libraryShelves.firstIndex(where: { $0.id == shelf.id }) else { return }
+        libraryShelves[index].name = cleaned
+        persist()
+    }
+
+    func deleteShelf(_ shelf: LibraryShelf) {
+        guard shelf.id != defaultShelf.id else {
+            notice = "默认书柜不能删除"
+            return
+        }
+        let fallbackID = defaultShelf.id
+        for course in courses(in: shelf) {
+            courseShelfAssignments[course.id] = fallbackID
+        }
+        libraryShelves.removeAll { $0.id == shelf.id }
+        persist()
+        notice = "书柜已删除，课程已移到默认书柜"
+    }
+
+    func moveCourse(_ course: Course, to shelf: LibraryShelf) {
+        courseShelfAssignments[course.id] = shelf.id
+        persist()
+        notice = "已将“\(course.title)”移到“\(shelf.name)”"
+    }
+
+    // MARK: - 网盘资源
+
+    func addCloudResource(title: String, urlString: String, kind: LearningResourceKind, detail: String?) {
+        let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanedTitle.isEmpty,
+              let url = secureURL(from: urlString) else {
+            notice = "请输入资源名称和有效的 HTTPS 网盘地址"
+            return
+        }
+        cloudResources.append(
+            CloudResource(
+                id: UUID().uuidString,
+                title: cleanedTitle,
+                url: url,
+                kind: kind,
+                detail: detail?.trimmingCharacters(in: .whitespacesAndNewlines),
+                createdAt: Date()
+            )
+        )
+        persist()
+        notice = "已保存网盘资源“\(cleanedTitle)”"
+    }
+
+    func deleteCloudResource(_ resource: CloudResource) {
+        cloudResources.removeAll { $0.id == resource.id }
+        persist()
     }
 
     func importCourse(from url: URL) async {
@@ -153,7 +251,7 @@ final class AppModel: ObservableObject {
     }
 
     /// 用户确认后真正写入课程。
-    func confirmImport(_ selected: [Course]) async {
+    func confirmImport(_ selected: [Course], shelfID: String? = nil) async {
         guard !selected.isEmpty else { return }
         isLoading = true
         defer { isLoading = false }
@@ -164,11 +262,15 @@ final class AppModel: ObservableObject {
             do {
                 try await repository.storeCachedCourse(course)
                 upsert(course)
+                if let shelfID, libraryShelves.contains(where: { $0.id == shelfID }) {
+                    courseShelfAssignments[course.id] = shelfID
+                }
                 importedCount += 1
             } catch {
                 firstErrorMessage = firstErrorMessage ?? "“\(course.title)”：\(error.localizedDescription)"
             }
         }
+        persist()
 
         if importedCount > 0 {
             Haptics.success()
@@ -294,6 +396,7 @@ final class AppModel: ObservableObject {
         do {
             try await repository.deleteCachedCourse(id: course.id)
             courses.removeAll { $0.id == course.id }
+            courseShelfAssignments.removeValue(forKey: course.id)
             for resource in course.learningResources {
                 let stillUsed = courses.contains {
                     $0.learningResources.contains { $0.url == resource.url }
@@ -333,7 +436,7 @@ final class AppModel: ObservableObject {
                 reviewRemindersEnabled = granted
                 defaults.set(granted, forKey: Keys.reviewReminders)
                 if !granted {
-                    notice = "通知权限未开启，可在系统设置中允许学程发送提醒"
+                    notice = "通知权限未开启，可在系统设置中允许知识学习库发送提醒"
                 }
             } catch {
                 reviewRemindersEnabled = false
@@ -392,13 +495,16 @@ final class AppModel: ObservableObject {
 
     func makeBackupData() async -> Data? {
         let backup = LearningBackup(
-            version: 1,
+            version: 2,
             exportedAt: Date(),
             progress: progress,
             studyEvents: studyEvents,
             savedItems: savedItems,
             reviewItems: reviewItems,
-            notes: notes
+            notes: notes,
+            libraryShelves: libraryShelves,
+            courseShelfAssignments: courseShelfAssignments,
+            cloudResources: cloudResources
         )
         do {
             return try await backupService.encode(backup)
@@ -416,6 +522,16 @@ final class AppModel: ObservableObject {
             savedItems = backup.savedItems
             reviewItems = backup.reviewItems
             notes = backup.notes
+            if let shelves = backup.libraryShelves, !shelves.isEmpty {
+                libraryShelves = shelves
+            }
+            if let assignments = backup.courseShelfAssignments {
+                courseShelfAssignments = assignments
+            }
+            if let resources = backup.cloudResources {
+                cloudResources = resources
+            }
+            ensureShelfAssignments()
             persist()
             notice = "学习记录恢复完成"
         } catch {
@@ -672,10 +788,15 @@ final class AppModel: ObservableObject {
         } else {
             courses.append(course)
         }
+        if courseShelfAssignments[course.id] == nil {
+            courseShelfAssignments[course.id] = defaultShelf.id
+        }
+        persist()
     }
 
     private func secureURL(from string: String) -> URL? {
-        guard let url = URL(string: string),
+        let cleaned = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: cleaned),
               url.scheme?.lowercased() == "https",
               url.host?.isEmpty == false else {
             return nil
@@ -728,6 +849,29 @@ final class AppModel: ObservableObject {
         defaults.set(try? JSONEncoder().encode(reviewItems), forKey: Keys.reviewItems)
         defaults.set(try? JSONEncoder().encode(notes), forKey: Keys.notes)
         defaults.set(try? JSONEncoder().encode(offlineResourcePaths), forKey: Keys.offlineResources)
+        defaults.set(try? JSONEncoder().encode(libraryShelves), forKey: Keys.libraryShelves)
+        defaults.set(try? JSONEncoder().encode(courseShelfAssignments), forKey: Keys.courseShelfAssignments)
+        defaults.set(try? JSONEncoder().encode(cloudResources), forKey: Keys.cloudResources)
+    }
+
+    private func ensureDefaultShelf() {
+        guard libraryShelves.isEmpty else { return }
+        libraryShelves = [
+            LibraryShelf(id: "default-library-shelf", name: "默认书柜", createdAt: Date())
+        ]
+    }
+
+    private func ensureShelfAssignments() {
+        ensureDefaultShelf()
+        let validShelfIDs = Set(libraryShelves.map(\.id))
+        let fallbackID = defaultShelf.id
+        courseShelfAssignments = courseShelfAssignments.filter { assignment in
+            courses.contains(where: { $0.id == assignment.key }) && validShelfIDs.contains(assignment.value)
+        }
+        for course in courses where courseShelfAssignments[course.id] == nil {
+            courseShelfAssignments[course.id] = fallbackID
+        }
+        persist()
     }
 
     private static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {

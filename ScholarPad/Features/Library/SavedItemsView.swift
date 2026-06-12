@@ -39,8 +39,7 @@ private struct SavedQuestionRow: View {
                 .frame(width: 42, height: 42)
                 .background(course.accent.color.opacity(0.11), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 5) {
-                Text(question.question)
-                    .font(.headline)
+                RichInlineText(question.question, font: .headline, color: .primary)
                     .lineLimit(2)
                 Text("\(chapter.chapterTitle) · \(question.type.title)")
                     .font(.caption)

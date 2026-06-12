@@ -193,8 +193,7 @@ struct ReviewQueueView: View {
             )
         } label: {
             VStack(alignment: .leading, spacing: 5) {
-                Text(context.question.question)
-                    .font(.headline)
+                RichInlineText(context.question.question, font: .headline, color: .primary)
                     .lineLimit(2)
                 Text("\(context.chapter.chapterTitle) · \(context.question.type.title)")
                     .font(.caption)

@@ -128,7 +128,7 @@ struct SettingsView: View {
                 } header: {
                     Text("在线课程目录")
                 } footer: {
-                    Text("课程目录可以列出多门课程，用户可在在线课程库中按需安装。")
+                    Text("课程目录可以列出多本在线书籍，用户可在在线资源库中按需安装。")
                 }
 
                 Section {
@@ -152,6 +152,7 @@ struct SettingsView: View {
                     LabeledContent("最低系统", value: "iPadOS 17")
                     LabeledContent("设备布局", value: "iPad 自适应三栏")
                     LabeledContent("离线能力", value: "已启用")
+                    LabeledContent("本地内容期限", value: "永久，无应用内到期限制")
                     LabeledContent("课程缓存", value: "独立文件存储")
                     LabeledContent("复习计划", value: "自动间隔调度")
                     LabeledContent("拓展资源", value: "应用内查看")
@@ -176,7 +177,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Text("学程使用本地持久化保存学习进度、答题结果和收藏。远程同步只读取你配置的课程 JSON 地址。")
+                    Text("知识学习库使用本地持久化保存书柜、学习进度、答题结果、网盘资源和收藏。远程同步只读取你配置的地址。")
                         .foregroundStyle(.secondary)
                 } header: {
                     Text("数据与隐私")

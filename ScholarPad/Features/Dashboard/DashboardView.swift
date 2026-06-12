@@ -45,7 +45,7 @@ struct DashboardView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        model.selectedSection = .search
+                        model.activateSection(.search)
                     } label: {
                         Label("搜索", systemImage: "magnifyingglass")
                     }
