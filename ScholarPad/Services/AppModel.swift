@@ -118,6 +118,93 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: - 导入预览流程
+
+    /// 解析所选文件但不落库，供导入预览确认页使用。
+    func previewImports(from urls: [URL]) async -> [CourseImportPreview] {
+        var previews: [CourseImportPreview] = []
+        for url in urls {
+            let fileName = url.lastPathComponent
+            do {
+                let course = try await repository.loadImportedCourse(from: url)
+                let isUpdate = courses.contains { $0.id == course.id }
+                previews.append(
+                    CourseImportPreview(
+                        id: "\(course.id)-\(previews.count)",
+                        fileName: fileName,
+                        course: course,
+                        isUpdate: isUpdate,
+                        errorMessage: nil
+                    )
+                )
+            } catch {
+                previews.append(
+                    CourseImportPreview(
+                        id: "error-\(previews.count)-\(fileName)",
+                        fileName: fileName,
+                        course: nil,
+                        isUpdate: false,
+                        errorMessage: error.localizedDescription
+                    )
+                )
+            }
+        }
+        return previews
+    }
+
+    /// 用户确认后真正写入课程。
+    func confirmImport(_ selected: [Course]) async {
+        guard !selected.isEmpty else { return }
+        isLoading = true
+        defer { isLoading = false }
+
+        var importedCount = 0
+        var firstErrorMessage: String?
+        for course in selected {
+            do {
+                try await repository.storeCachedCourse(course)
+                upsert(course)
+                importedCount += 1
+            } catch {
+                firstErrorMessage = firstErrorMessage ?? "“\(course.title)”：\(error.localizedDescription)"
+            }
+        }
+
+        if importedCount > 0 {
+            Haptics.success()
+            notice = firstErrorMessage == nil
+                ? "已导入 \(importedCount) 门课程"
+                : "已导入 \(importedCount) 门课程，部分失败：\(firstErrorMessage ?? "")"
+        } else {
+            Haptics.error()
+            notice = firstErrorMessage ?? "没有可导入的课程"
+        }
+    }
+
+    /// 修改课程主题色并持久化（内置课程仅会话内生效）。
+    func updateCourseAccent(_ course: Course, accent: CourseAccent) async {
+        guard let index = courses.firstIndex(where: { $0.id == course.id }) else { return }
+        var updated = courses[index]
+        updated.accent = accent
+        courses[index] = updated
+        if !updated.source.isBundled {
+            try? await repository.storeCachedCourse(updated)
+        }
+    }
+
+    /// 课程最近学习时间，用于“最近学习”排序。
+    func lastStudied(_ course: Course) -> Date? {
+        course.payload.chapters
+            .compactMap { progress(for: course, chapter: $0).lastStudiedAt }
+            .max()
+    }
+
+    /// 第一个未完成的章节，用于“继续学习”。
+    func resumeChapter(for course: Course) -> Chapter? {
+        course.payload.chapters.first { completion(for: course, chapter: $0) < 1 }
+            ?? course.payload.chapters.first
+    }
+
     func syncRemoteCourse() async {
         guard network.isConnected else {
             notice = "当前处于离线状态"

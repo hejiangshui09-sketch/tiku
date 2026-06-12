@@ -40,6 +40,20 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .settings: "gearshape"
         }
     }
+
+    var selectedSymbol: String {
+        switch self {
+        case .home: "square.grid.2x2.fill"
+        case .courses: "books.vertical.fill"
+        case .online: "network"
+        case .practice: "checkmark.seal.fill"
+        case .search: "magnifyingglass"
+        case .saved: "bookmark.fill"
+        case .notes: "note.text"
+        case .progress: "chart.xyaxis.line"
+        case .settings: "gearshape.fill"
+        }
+    }
 }
 
 struct ChapterProgress: Codable, Hashable, Sendable {
@@ -137,4 +151,12 @@ struct SearchResult: Identifiable, Hashable, Sendable {
         self.chapterID = chapterID
         self.moduleIndex = moduleIndex
     }
+}
+
+struct CourseImportPreview: Identifiable, Hashable, Sendable {
+    let id: String
+    let fileName: String
+    var course: Course?
+    let isUpdate: Bool
+    let errorMessage: String?
 }

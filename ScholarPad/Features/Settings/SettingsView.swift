@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var prefs: AppPreferences
     @State private var showingResetConfirmation = false
     @State private var backupDocument: LearningBackupDocument?
     @State private var isExportingBackup = false
@@ -12,6 +13,88 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("外观模式", selection: $prefs.appearance) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            Label(mode.title, systemImage: mode.symbol).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("应用主题色")
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 8), spacing: 12) {
+                            ForEach(AppTint.allCases) { tint in
+                                Button {
+                                    Haptics.selection()
+                                    prefs.tint = tint
+                                } label: {
+                                    Circle()
+                                        .fill(tint.color)
+                                        .frame(width: 36, height: 36)
+                                        .overlay {
+                                            if prefs.tint == tint {
+                                                Image(systemName: "checkmark")
+                                                    .font(.caption.weight(.bold))
+                                                    .foregroundStyle(.white)
+                                            }
+                                        }
+                                        .overlay {
+                                            Circle().stroke(
+                                                prefs.tint == tint ? tint.color.opacity(0.4) : .clear,
+                                                lineWidth: 3
+                                            )
+                                            .padding(-4)
+                                        }
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(tint.title)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+
+                    Toggle("触觉反馈", isOn: $prefs.hapticsEnabled)
+                } header: {
+                    Text("个性化外观")
+                } footer: {
+                    Text("主题色会应用到导航、首页横幅和强调元素。")
+                }
+
+                Section {
+                    NavigationLink {
+                        ReadingPreferencePage()
+                    } label: {
+                        HStack {
+                            Label("阅读偏好", systemImage: "textformat.size")
+                            Spacer()
+                            Text("\(prefs.readingTheme.title) · \(prefs.readingFontDesign.title) · \(prefs.readingFontScale.formatted(.percent.precision(.fractionLength(0))))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("阅读")
+                } footer: {
+                    Text("阅读主题、正文字体、字号与行距，与章节阅读页内的设置保持同步。")
+                }
+
+                Section {
+                    Stepper(value: $prefs.dailyGoalMinutes, in: 10...240, step: 10) {
+                        HStack {
+                            Label("每日学习目标", systemImage: "target")
+                            Spacer()
+                            Text("\(prefs.dailyGoalMinutes) 分钟")
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                    }
+                } header: {
+                    Text("学习目标")
+                } footer: {
+                    Text("学习首页的目标环会按此目标显示今日完成度。")
+                }
+
                 Section {
                     HStack(spacing: 14) {
                         Image(systemName: model.network.isConnected ? "wifi" : "wifi.slash")
@@ -171,5 +254,49 @@ struct SettingsView: View {
                 Task { await model.restoreBackup(from: url) }
             }
         }
+    }
+}
+
+/// 设置页内的阅读偏好页面，复用阅读器的设置面板。
+private struct ReadingPreferencePage: View {
+    @EnvironmentObject private var prefs: AppPreferences
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                ReadingOptionsPanel(accent: prefs.tint.color)
+                    .scholarCard(padding: 6)
+
+                // 实时预览
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("预览")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("细胞的结构与功能")
+                            .font(.system(size: 22 * prefs.readingFontScale, weight: .bold, design: prefs.readingFontDesign.design))
+                            .foregroundStyle(prefs.readingTheme.textColor)
+                        Text("细胞是生物体结构和功能的基本单位。真核细胞具有由核膜包被的细胞核，遗传物质主要存在于细胞核中。")
+                            .font(.system(size: 17 * prefs.readingFontScale, design: prefs.readingFontDesign.design))
+                            .foregroundStyle(prefs.readingTheme.secondaryTextColor)
+                            .lineSpacing(prefs.readingLineSpacing)
+                    }
+                    .padding(20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(prefs.readingTheme.cardBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(prefs.readingTheme.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(.primary.opacity(0.07), lineWidth: 1)
+                    }
+                }
+                .frame(maxWidth: 400)
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity)
+        }
+        .background(ScholarTheme.page)
+        .navigationTitle("阅读偏好")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

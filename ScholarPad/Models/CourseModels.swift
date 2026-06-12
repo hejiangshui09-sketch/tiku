@@ -44,6 +44,10 @@ enum CourseAccent: String, CaseIterable, Codable, Hashable, Sendable {
     case coral
     case violet
     case mint
+    case rose
+    case amber
+    case teal
+    case blue
 }
 
 struct CoursePayload: Codable, Hashable, Sendable {

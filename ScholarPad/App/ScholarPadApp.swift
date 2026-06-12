@@ -3,11 +3,13 @@ import SwiftUI
 @main
 struct ScholarPadApp: App {
     @StateObject private var model = AppModel()
+    @StateObject private var prefs = AppPreferences.shared
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(model)
+                .environmentObject(prefs)
                 .task {
                     await model.bootstrap()
                 }

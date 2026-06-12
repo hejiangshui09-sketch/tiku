@@ -11,6 +11,7 @@ struct LearningProgressView: View {
                     SectionHeading(title: "学习报告", subtitle: "用清晰的数据看见积累")
                     metricGrid
                     weeklyChart
+                    WeeklyHeatmap(dailyMinutes: model.dailyMinutes(days: 28))
                     courseProgress
                 }
                 .padding(28)
