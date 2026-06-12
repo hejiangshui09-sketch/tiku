@@ -45,6 +45,7 @@ REQUIRED_FILES = (
 REQUIRED_FEATURE_FILES = (
     "ScholarPad/Features/Dashboard/DashboardView.swift",
     "ScholarPad/Features/Courses/CourseCatalogView.swift",
+    "ScholarPad/Features/Courses/CourseDocumentPicker.swift",
     "ScholarPad/Features/Courses/OnlineLibraryView.swift",
     "ScholarPad/Features/Courses/LessonReaderView.swift",
     "ScholarPad/Features/Courses/ResourceViewerView.swift",

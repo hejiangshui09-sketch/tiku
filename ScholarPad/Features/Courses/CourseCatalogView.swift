@@ -1,10 +1,10 @@
 import Foundation
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct CourseCatalogView: View {
     @EnvironmentObject private var model: AppModel
     @State private var isImporting = false
+    @State private var importStatusMessage: String?
     @State private var coursePendingDeletion: Course?
 
     var body: some View {
@@ -56,23 +56,24 @@ struct CourseCatalogView: View {
                     }
                 }
             }
-            .fileImporter(
-                isPresented: $isImporting,
-                allowedContentTypes: [.json],
-                allowsMultipleSelection: true
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    guard !urls.isEmpty else {
-                        model.notice = "没有选择可导入的 JSON 文件"
-                        return
+            .sheet(isPresented: $isImporting) {
+                CourseDocumentPicker(
+                    onPick: { urls in
+                        isImporting = false
+                        guard !urls.isEmpty else {
+                            importStatusMessage = "没有选择可导入的 JSON 文件"
+                            return
+                        }
+                        importStatusMessage = "正在导入 \(urls.count) 个 JSON 文件…"
+                        Task {
+                            await model.importCourses(from: urls)
+                            importStatusMessage = model.notice ?? "导入已完成"
+                        }
+                    },
+                    onCancel: {
+                        isImporting = false
                     }
-                    Task { await model.importCourses(from: urls) }
-                case .failure(let error):
-                    if (error as? CocoaError)?.code != .userCancelled {
-                        model.notice = "无法打开所选文件：\(error.localizedDescription)"
-                    }
-                }
+                )
             }
             .alert(
                 "删除课程？",
@@ -97,7 +98,7 @@ struct CourseCatalogView: View {
 
     @ViewBuilder
     private var importStatus: some View {
-        if let notice = model.notice {
+        if let notice = importStatusMessage {
             HStack(spacing: 12) {
                 Image(systemName: notice.hasPrefix("已导入") ? "checkmark.circle.fill" : "info.circle.fill")
                     .foregroundStyle(notice.hasPrefix("已导入") ? .green : .orange)
@@ -105,7 +106,7 @@ struct CourseCatalogView: View {
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button {
-                    model.notice = nil
+                    importStatusMessage = nil
                 } label: {
                     Image(systemName: "xmark")
                 }
