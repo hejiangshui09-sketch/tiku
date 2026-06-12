@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -11,13 +12,14 @@ struct CourseCatalogView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     catalogHero
+                    importStatus
                     SectionHeading(
                         title: "全部课程",
                         subtitle: "\(model.courses.count) 门课程已就绪，支持离线学习"
                     )
 
                     if model.courses.isEmpty {
-                        EmptyState(symbol: "books.vertical", title: "还没有课程", detail: "导入解析器生成的 chapters.json 开始学习")
+                        EmptyState(symbol: "books.vertical", title: "还没有课程", detail: "导入解析器生成的课程 JSON 或单章 JSON 开始学习")
                             .frame(height: 360)
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 18)], spacing: 18) {
@@ -59,8 +61,18 @@ struct CourseCatalogView: View {
                 allowedContentTypes: [.json],
                 allowsMultipleSelection: true
             ) { result in
-                guard case .success(let urls) = result else { return }
-                Task { await model.importCourses(from: urls) }
+                switch result {
+                case .success(let urls):
+                    guard !urls.isEmpty else {
+                        model.notice = "没有选择可导入的 JSON 文件"
+                        return
+                    }
+                    Task { await model.importCourses(from: urls) }
+                case .failure(let error):
+                    if (error as? CocoaError)?.code != .userCancelled {
+                        model.notice = "无法打开所选文件：\(error.localizedDescription)"
+                    }
+                }
             }
             .alert(
                 "删除课程？",
@@ -83,6 +95,27 @@ struct CourseCatalogView: View {
         }
     }
 
+    @ViewBuilder
+    private var importStatus: some View {
+        if let notice = model.notice {
+            HStack(spacing: 12) {
+                Image(systemName: notice.hasPrefix("已导入") ? "checkmark.circle.fill" : "info.circle.fill")
+                    .foregroundStyle(notice.hasPrefix("已导入") ? .green : .orange)
+                Text(notice)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    model.notice = nil
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+            .scholarCard(padding: 14)
+        }
+    }
+
     private var catalogHero: some View {
         HStack(spacing: 24) {
             VStack(alignment: .leading, spacing: 10) {
@@ -95,7 +128,7 @@ struct CourseCatalogView: View {
                 Button {
                     isImporting = true
                 } label: {
-                    Label("导入 chapters.json", systemImage: "plus")
+                    Label("导入课程 JSON", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
                 .padding(.top, 6)

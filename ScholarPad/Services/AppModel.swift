@@ -86,8 +86,13 @@ final class AppModel: ObservableObject {
 
     func importCourses(from urls: [URL]) async {
         guard !urls.isEmpty else { return }
+        notice = nil
         isLoading = true
-        defer { isLoading = false }
+        let accessedURLs = urls.filter { $0.startAccessingSecurityScopedResource() }
+        defer {
+            accessedURLs.forEach { $0.stopAccessingSecurityScopedResource() }
+            isLoading = false
+        }
 
         var importedCount = 0
         var firstErrorMessage: String?
@@ -98,7 +103,8 @@ final class AppModel: ObservableObject {
                 upsert(course)
                 importedCount += 1
             } catch {
-                firstErrorMessage = firstErrorMessage ?? error.localizedDescription
+                firstErrorMessage = firstErrorMessage
+                    ?? "“\(url.lastPathComponent)”：\(error.localizedDescription)"
             }
         }
 
