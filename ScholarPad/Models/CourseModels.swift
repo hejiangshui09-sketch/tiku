@@ -69,6 +69,25 @@ struct CoursePayload: Codable, Hashable, Sendable {
         case chapters
     }
 
+    init(
+        courseID: String? = nil,
+        courseTitle: String? = nil,
+        courseSubtitle: String? = nil,
+        courseSubject: String? = nil,
+        courseAccent: CourseAccent? = nil,
+        chapters: [Chapter]
+    ) {
+        self.courseID = courseID
+        self.courseTitle = courseTitle
+        self.courseSubtitle = courseSubtitle
+        self.courseSubject = courseSubject
+        self.courseAccent = courseAccent
+        self.chapters = chapters
+        totalChapters = chapters.count
+        totalQuestions = chapters.reduce(0) { $0 + $1.questions.all.count }
+        totalKnowledgeModules = chapters.reduce(0) { $0 + $1.knowledgePoints.count }
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         courseID = try container.decodeIfPresent(String.self, forKey: .courseID)

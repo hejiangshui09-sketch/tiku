@@ -32,6 +32,9 @@ def validate(path: Path) -> tuple[list[str], dict[str, int]]:
     if not require(root, dict, "$", errors):
         return errors, {}
 
+    if "chapters" not in root and "chapter_id" in root:
+        root = {"chapters": [root]}
+
     for metadata_key in ("course_id", "course_title", "course_subtitle", "course_subject"):
         if metadata_key in root:
             require(root.get(metadata_key), str, f"$.{metadata_key}", errors)

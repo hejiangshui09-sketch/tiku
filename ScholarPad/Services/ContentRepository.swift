@@ -181,7 +181,7 @@ actor ContentRepository {
         source: CourseSource
     ) throws -> Course {
         do {
-            let payload = try decoder.decode(CoursePayload.self, from: data)
+            let payload = try decodePayload(from: data)
             guard !payload.chapters.isEmpty else {
                 throw ContentError.emptyCourse
             }
@@ -206,6 +206,21 @@ actor ContentRepository {
         } catch {
             throw ContentError.decodingFailed(error.localizedDescription)
         }
+    }
+
+    private func decodePayload(from data: Data) throws -> CoursePayload {
+        let payload = try decoder.decode(CoursePayload.self, from: data)
+        if !payload.chapters.isEmpty {
+            return payload
+        }
+        guard let chapter = try? decoder.decode(Chapter.self, from: data) else {
+            throw ContentError.emptyCourse
+        }
+        return CoursePayload(
+            courseTitle: chapter.chapterTitle,
+            courseSubtitle: "单章导入课程",
+            chapters: [chapter]
+        )
     }
 
     private func fingerprint(_ value: String) -> String {

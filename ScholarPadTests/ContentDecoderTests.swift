@@ -117,6 +117,37 @@ final class ContentDecoderTests: XCTestCase {
         XCTAssertEqual(payload.chapters[0].knowledgePoints[0].description, "")
     }
 
+    func testSingleChapterJSONImportsAsCourse() async throws {
+        let data = Data("""
+        {
+          "chapter_id": 7,
+          "chapter_title": "单章课程",
+          "knowledge_points": [{"title": "核心知识"}],
+          "questions": {
+            "single_choice": [{
+              "id": 1,
+              "type": "single_choice",
+              "question": "示例题",
+              "answer": "A",
+              "options": {"A": "正确", "B": "错误"}
+            }]
+          }
+        }
+        """.utf8)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("json")
+        try data.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let course = try await ContentRepository().loadImportedCourse(from: url)
+
+        XCTAssertEqual(course.title, "单章课程")
+        XCTAssertEqual(course.subtitle, "单章导入课程")
+        XCTAssertEqual(course.payload.totalChapters, 1)
+        XCTAssertEqual(course.payload.totalQuestions, 1)
+    }
+
     func testReviewSchedulerExpandsAndResetsInterval() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let first = ReviewScheduler.updatedItem(
