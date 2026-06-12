@@ -127,7 +127,7 @@ struct QuizSessionView: View {
                     .overlay(alignment: .topLeading) {
                         if writtenAnswer.isEmpty {
                             Text("先写下你的理解，再查看参考答案…")
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Color(uiColor: .tertiaryLabel))
                                 .padding(16)
                                 .allowsHitTesting(false)
                         }
@@ -211,7 +211,7 @@ struct QuizSessionView: View {
             return
         }
 
-        currentCorrect = answerMatches(question)
+        currentCorrect = QuestionEvaluator.isCorrect(question, selectedAnswers: selectedAnswers)
         if currentCorrect { correctCount += 1 }
         model.recordAttempt(course: course, chapter: chapter, question: question, correct: currentCorrect)
         withAnimation(.snappy) { showingAnswer = true }
@@ -221,19 +221,6 @@ struct QuizSessionView: View {
         if correct { correctCount += 1 }
         model.recordAttempt(course: course, chapter: chapter, question: question, correct: correct)
         advance()
-    }
-
-    private func answerMatches(_ question: Question) -> Bool {
-        switch question.type {
-        case .singleChoice, .multipleChoice:
-            return Set(question.answer.uppercased().filter { "ABCD".contains($0) }.map { String($0) }) == selectedAnswers
-        case .trueFalse:
-            let answer = question.answer
-            let expected = (answer.contains("对") || answer.lowercased().contains("true") || answer.contains("正确")) ? "对" : "错"
-            return selectedAnswers == [expected]
-        case .shortAnswer:
-            return false
-        }
     }
 
     private func advance() {
@@ -290,7 +277,7 @@ private struct ChoiceRow: View {
                     .foregroundStyle(.primary)
                 Spacer()
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? color : .tertiary)
+                    .foregroundStyle(isSelected ? color : Color(uiColor: .tertiaryLabel))
             }
             .padding(13)
             .background(isSelected ? color.opacity(0.08) : ScholarTheme.elevated, in: RoundedRectangle(cornerRadius: 15, style: .continuous))

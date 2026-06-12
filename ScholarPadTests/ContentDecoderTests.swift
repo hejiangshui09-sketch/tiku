@@ -36,6 +36,57 @@ final class ContentDecoderTests: XCTestCase {
         XCTAssertEqual(question.options?["A"], "甲")
     }
 
+    func testQuestionEvaluatorSupportsChoiceKeysBeyondD() throws {
+        let data = Data("""
+        {
+          "id": 1,
+          "type": "multiple_choice",
+          "question": "选择所有正确选项",
+          "answer": "BEF",
+          "options": {
+            "A": "甲",
+            "B": "乙",
+            "C": "丙",
+            "D": "丁",
+            "E": "戊",
+            "F": "己"
+          }
+        }
+        """.utf8)
+        let question = try JSONDecoder().decode(Question.self, from: data)
+
+        XCTAssertTrue(QuestionEvaluator.isCorrect(question, selectedAnswers: ["B", "E", "F"]))
+        XCTAssertFalse(QuestionEvaluator.isCorrect(question, selectedAnswers: ["B", "E"]))
+    }
+
+    func testQuestionEvaluatorHandlesNegativeTrueFalseAnswers() throws {
+        let negative = try JSONDecoder().decode(
+            Question.self,
+            from: Data("""
+            {
+              "id": 1,
+              "type": "true_false",
+              "question": "测试判断题",
+              "answer": "不正确"
+            }
+            """.utf8)
+        )
+        let missing = try JSONDecoder().decode(
+            Question.self,
+            from: Data("""
+            {
+              "id": 2,
+              "type": "true_false",
+              "question": "缺少答案"
+            }
+            """.utf8)
+        )
+
+        XCTAssertTrue(QuestionEvaluator.isCorrect(negative, selectedAnswers: ["错"]))
+        XCTAssertFalse(QuestionEvaluator.isCorrect(negative, selectedAnswers: ["对"]))
+        XCTAssertFalse(QuestionEvaluator.isCorrect(missing, selectedAnswers: ["错"]))
+    }
+
     func testMissingOptionalFieldsAreTolerated() throws {
         let data = Data("""
         {

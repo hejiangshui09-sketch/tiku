@@ -162,9 +162,9 @@ def parse_answer_explanation(answer_raw: str) -> Dict[str, str]:
 
 
 def parse_options(question_body: str) -> Dict[str, str]:
-    """提取选项 A B C D"""
+    """提取选项 A-Z"""
     options: Dict[str, str] = {}
-    pattern = r'^([ABCD])[.．、]\s*(.+)'
+    pattern = r'^([A-Z])[.．、]\s*(.+)'
     for line in question_body.splitlines():
         m = re.match(pattern, line.strip())
         if m:
@@ -177,7 +177,7 @@ def clean_question_body(body: str) -> str:
     lines = []
     for line in body.splitlines():
         stripped = line.strip()
-        if re.match(r'^[ABCD][.．、]', stripped):
+        if re.match(r'^[A-Z][.．、]', stripped):
             break  # 遇到选项行就停止
         if stripped:
             lines.append(stripped)
@@ -203,7 +203,7 @@ def parse_question_block(raw: str, q_type: str, q_index: int) -> Dict[str, Any]:
         base["question"] = clean_question_body(body)
         base["options"]  = options
         # 规范化答案格式
-        base["answer"] = re.sub(r'[^ABCD]', '', ae["answer"].upper())
+        base["answer"] = re.sub(r'[^A-Z]', '', ae["answer"].upper())
 
     elif q_type == "true_false":
         # 判断题只有题干

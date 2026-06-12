@@ -30,6 +30,7 @@ REQUIRED_FILES = (
     "ScholarPad/Services/AppModel.swift",
     "ScholarPad/Services/ContentRepository.swift",
     "ScholarPad/Services/CourseValidator.swift",
+    "ScholarPad/Services/QuestionEvaluator.swift",
     "ScholarPad/Services/ResourceDownloadService.swift",
     "ScholarPad/Services/ReviewReminderService.swift",
     "ScholarPad/Services/LearningBackupService.swift",

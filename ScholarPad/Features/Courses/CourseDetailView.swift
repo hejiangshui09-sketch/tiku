@@ -99,7 +99,7 @@ private struct ChapterRow: View {
             ProgressRing(value: model.completion(for: course, chapter: chapter), size: 48, lineWidth: 5, color: course.accent.color)
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Color(uiColor: .tertiaryLabel))
         }
         .scholarCard(padding: 16)
     }

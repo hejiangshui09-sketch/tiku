@@ -79,11 +79,11 @@ actor ResourceDownloadService {
             return candidate
         }
         switch resource.kind {
-        case .video: "mp4"
-        case .audio: "m4a"
-        case .document: "pdf"
-        case .image: "jpg"
-        case .link: "html"
+        case .video: return "mp4"
+        case .audio: return "m4a"
+        case .document: return "pdf"
+        case .image: return "jpg"
+        case .link: return "html"
         }
     }
 }

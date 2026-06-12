@@ -3,13 +3,17 @@ name: iPadOS Build
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
     runs-on: macos-15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Select Xcode version
         uses: maxim-lobanov/setup-xcode@v1
@@ -34,3 +38,33 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             test
+
+      - name: Build unsigned device app
+        run: |
+          rm -rf build
+          xcodebuild \
+            -project ScholarPad.xcodeproj \
+            -scheme ScholarPad \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p build/unsigned/Payload
+          cp -R build/DerivedData/Build/Products/Release-iphoneos/ScholarPad.app build/unsigned/Payload/
+          cd build/unsigned
+          zip -qry ../ScholarPad-unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: ScholarPad-unsigned-${{ github.sha }}
+          path: build/ScholarPad-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

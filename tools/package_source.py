@@ -16,6 +16,7 @@ from audit_project import audit
 EXCLUDED_PARTS = {
     ".git",
     ".build",
+    "build",
     "DerivedData",
     "__pycache__",
     "xcuserdata",
